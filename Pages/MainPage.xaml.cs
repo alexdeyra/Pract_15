@@ -150,31 +150,31 @@ namespace Pract15.Pages
         private void Dialog_ProductUpdated(Product updatedProduct)
         {
             // Находим и обновляем товар в коллекции
-            var existingProduct = _viewModel.Products.FirstOrDefault(p =>
-                Math.Abs(p.Id - updatedProduct.Id) < 0.0001);
+            var existingProduct = _viewModel.Products.FirstOrDefault(p => p.Id == updatedProduct.Id);
 
             if (existingProduct != null)
             {
-                // Копируем обновленные свойства
-                existingProduct.Name = updatedProduct.Name;
-                existingProduct.Description = updatedProduct.Description;
-                existingProduct.Price = updatedProduct.Price;
-                existingProduct.Stock = updatedProduct.Stock;
-                existingProduct.Rating = updatedProduct.Rating;
-                existingProduct.CategoryId = updatedProduct.CategoryId;
-                existingProduct.BrandId = updatedProduct.BrandId;
-                existingProduct.Category = updatedProduct.Category;
-                existingProduct.Brand = updatedProduct.Brand;
+                // Загружаем полные данные из базы включая теги
+                using var db = new Pract15Context();
+                var freshProduct = db.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Brand)
+                    .Include(p => p.ProductTags)
+                        .ThenInclude(pt => pt.Tag) // ВАЖНО: загружаем теги
+                    .FirstOrDefault(p => p.Id == updatedProduct.Id);
 
-                // Копируем теги (очищаем старые и добавляем новые)
-                existingProduct.ProductTags.Clear();
-                foreach (var tag in updatedProduct.ProductTags)
+                if (freshProduct != null)
                 {
-                    existingProduct.ProductTags.Add(tag);
-                }
+                    // Находим индекс товара
+                    int index = _viewModel.Products.IndexOf(existingProduct);
 
-                // Обновляем фильтр и статистику
-                _viewModel.RefreshFilter();
+                    // Заменяем товар на полностью обновленный (с тегами)
+                    _viewModel.Products.RemoveAt(index);
+                    _viewModel.Products.Insert(index, freshProduct);
+
+                    // Обновляем фильтр и статистику
+                    _viewModel.RefreshFilter();
+                }
             }
             else
             {

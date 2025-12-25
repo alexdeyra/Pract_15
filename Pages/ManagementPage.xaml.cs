@@ -266,6 +266,64 @@ namespace Pract15.Pages
                 : $"Найдено тегов: {filteredCount} из {totalCount}";
         }
 
+
+
+
+        #endregion
+
+
+        #region Методы обновления тегов в реальном времени
+
+        // Метод для обновления тегов в товарах после редактирования тега
+        private void UpdateProductsAfterTagEdit(int tagId, string newTagName)
+        {
+            try
+            {
+                foreach (var product in _products)
+                {
+                    var productTag = product.ProductTags.FirstOrDefault(pt => pt.TagId == tagId);
+                    if (productTag != null && productTag.Tag != null)
+                    {
+                        productTag.Tag.Name = newTagName;
+                    }
+                }
+                _productsView.Refresh();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка обновления тегов в товарах: {ex.Message}");
+            }
+        }
+
+        // Метод для обновления тегов в товарах после удаления тега
+        private void UpdateProductsAfterTagDelete(int tagId)
+        {
+            try
+            {
+                foreach (var product in _products.ToList())
+                {
+                    var productTagToRemove = product.ProductTags.FirstOrDefault(pt => pt.TagId == tagId);
+                    if (productTagToRemove != null)
+                    {
+                        product.ProductTags.Remove(productTagToRemove);
+                    }
+                }
+                _productsView.Refresh();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка удаления тегов из товаров: {ex.Message}");
+            }
+        }
+
+        // Метод для обновления тегов в товарах после добавления тега
+        private void UpdateProductsAfterTagAdd(Tag newTag)
+        {
+            // Ничего не делаем, так как новый тег еще не связан с товарами
+            // Просто обновляем список тегов
+            LoadTags();
+        }
+
         #endregion
 
         #region Обработчики событий
@@ -513,12 +571,12 @@ namespace Pract15.Pages
                     using var db = new Pract15Context();
 
                     // Получаем максимальный ID
-                    double maxId = 0;
+                    int maxId = 0;
                     if (db.Categories.Any())
                     {
                         maxId = db.Categories.Max(c => c.Id);
                     }
-                    double newId = maxId + 1;
+                    int newId = maxId + 1;
 
                     var category = new Category
                     {
@@ -670,12 +728,12 @@ namespace Pract15.Pages
                     using var db = new Pract15Context();
 
                     // Получаем максимальный ID
-                    double maxId = 0;
+                    int maxId = 0;
                     if (db.Brands.Any())
                     {
                         maxId = db.Brands.Max(b => b.Id);
                     }
-                    double newId = maxId + 1;
+                    int newId = maxId + 1;
 
                     var brand = new Brand
                     {
@@ -826,12 +884,12 @@ namespace Pract15.Pages
                     using var db = new Pract15Context();
 
                     // Получаем максимальный ID
-                    double maxId = 0;
+                    int maxId = 0;
                     if (db.Tags.Any())
                     {
                         maxId = db.Tags.Max(t => t.Id);
                     }
-                    double newId = maxId + 1;
+                    int newId = maxId + 1;
 
                     var tag = new Tag
                     {
@@ -859,11 +917,11 @@ namespace Pract15.Pages
 
         private void EditTag_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag != null && double.TryParse(button.Tag.ToString(), out double id))
+            if (sender is Button button && button.Tag != null && int.TryParse(button.Tag.ToString(), out int id))
             {
                 try
                 {
-                    var tag = _tags.FirstOrDefault(t => Math.Abs(t.Id - id) < 0.0001);
+                    var tag = _tags.FirstOrDefault(t => t.Id == id);
 
                     if (tag != null)
                     {
@@ -875,17 +933,27 @@ namespace Pract15.Pages
                         {
                             using var db = new Pract15Context();
                             var dbTag = db.Tags
-                                .FirstOrDefault(t => Math.Abs(t.Id - id) < 0.0001);
+                                .Include(t => t.ProductTags) // Загружаем связи с товарами
+                                .FirstOrDefault(t => t.Id == id);
 
                             if (dbTag != null)
                             {
-                                dbTag.Name = dialog.Value.Trim();
+                                string oldTagName = dbTag.Name;
+                                string newTagName = dialog.Value.Trim();
+
+                                dbTag.Name = newTagName;
                                 db.SaveChanges();
 
                                 // Обновляем в коллекции и UI
-                                tag.Name = dialog.Value.Trim();
+                                tag.Name = newTagName;
                                 _tagsView.Refresh();
                                 UpdateTagsStats();
+
+                                // ОБНОВЛЯЕМ ТЕГИ ВО ВСЕХ ТОВАРАХ
+                                UpdateProductsAfterTagEdit(id, newTagName);
+
+                                // Также перезагружаем товары для полного обновления
+                                LoadProducts();
 
                                 MessageBox.Show("Тег успешно обновлен!", "Успех",
                                     MessageBoxButton.OK, MessageBoxImage.Information);
@@ -903,22 +971,23 @@ namespace Pract15.Pages
 
         private void DeleteTag_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("Удалить этот тег?", "Подтверждение",
+            if (MessageBox.Show("Удалить этот тег? Все связи с товарами будут удалены.", "Подтверждение",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                if (sender is Button button && button.Tag != null && double.TryParse(button.Tag.ToString(), out double id))
+                if (sender is Button button && button.Tag != null && int.TryParse(button.Tag.ToString(), out int id))
                 {
                     try
                     {
                         using var db = new Pract15Context();
                         var tag = db.Tags
-                            .FirstOrDefault(t => Math.Abs(t.Id - id) < 0.0001);
+                            .Include(t => t.ProductTags)
+                            .FirstOrDefault(t => t.Id == id);
 
                         if (tag != null)
                         {
                             // Удаляем связи с товарами
                             var productTags = db.ProductTags
-                                .Where(pt => Math.Abs(pt.TagId - id) < 0.0001)
+                                .Where(pt => pt.TagId == id)
                                 .ToList();
                             db.ProductTags.RemoveRange(productTags);
 
@@ -926,13 +995,19 @@ namespace Pract15.Pages
                             db.SaveChanges();
 
                             // Удаляем из коллекции и обновляем UI
-                            var tagToRemove = _tags.FirstOrDefault(t => Math.Abs(t.Id - id) < 0.0001);
+                            var tagToRemove = _tags.FirstOrDefault(t => t.Id == id);
                             if (tagToRemove != null)
                             {
                                 _tags.Remove(tagToRemove);
                                 _tagsView.Refresh();
                                 UpdateTagsStats();
                             }
+
+                            // УДАЛЯЕМ ТЕГ ИЗ ВСЕХ ТОВАРОВ
+                            UpdateProductsAfterTagDelete(id);
+
+                            // Перезагружаем товары для полного обновления
+                            LoadProducts();
 
                             MessageBox.Show("Тег успешно удален!", "Успех",
                                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -946,6 +1021,9 @@ namespace Pract15.Pages
                 }
             }
         }
+
+
+
 
         #endregion
 

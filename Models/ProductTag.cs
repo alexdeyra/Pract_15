@@ -5,9 +5,9 @@ namespace Pract15.Models;
 
 public partial class ProductTag
 {
-    public double ProductId { get; set; }
+    public int ProductId { get; set; }  
 
-    public double TagId { get; set; }
+    public int TagId { get; set; }  
 
     public int Id { get; set; }
 

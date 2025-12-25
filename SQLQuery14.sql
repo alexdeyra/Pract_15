@@ -14,38 +14,38 @@ GO
 
 
 CREATE TABLE [categories$] (
-    id FLOAT PRIMARY KEY,
+    id INT PRIMARY KEY,
     name NVARCHAR(255) NOT NULL
 );
 
 CREATE TABLE [brands$] (
-    id FLOAT PRIMARY KEY,
+    id INT PRIMARY KEY,
     name NVARCHAR(255) NOT NULL
 );
 
 CCREATE TABLE [tags$] (
-    id FLOAT PRIMARY KEY,
+    id INT PRIMARY KEY,
     name NVARCHAR(255) NOT NULL
 );
 
 CREATE TABLE [products$] (
-    id FLOAT PRIMARY KEY,
+    id INT PRIMARY KEY,
     name NVARCHAR(255) NOT NULL,
     description NVARCHAR(255) NOT NULL,
-    price FLOAT NOT NULL DEFAULT 0,
-    stock FLOAT NOT NULL DEFAULT 0,
+    price INT NOT NULL DEFAULT 0,
+    stock INT NOT NULL DEFAULT 0,
     rating FLOAT NOT NULL DEFAULT 0,
     created_at NVARCHAR(255) NOT NULL DEFAULT '1900-01-01',
-    category_id FLOAT NOT NULL,
-    brand_id FLOAT NOT NULL,
+    category_id INT NOT NULL,
+    brand_id INT NOT NULL,
     CONSTRAINT FK_products$_categories$ FOREIGN KEY (category_id) REFERENCES [categories$](id),
     CONSTRAINT FK_products$_brands$ FOREIGN KEY (brand_id) REFERENCES [brands$](id)
 );
 
 CREATE TABLE [product_tags$] (
     id INT IDENTITY(1,1) PRIMARY KEY,
-    product_id FLOAT NOT NULL,
-    tag_id FLOAT NOT NULL,
+    product_id INT NOT NULL,
+    tag_id INT NOT NULL,
     CONSTRAINT FK_product_tags$_products$ FOREIGN KEY (product_id) REFERENCES [products$](id),
     CONSTRAINT FK_product_tags$_tags$ FOREIGN KEY (tag_id) REFERENCES [tags$](id)
 );

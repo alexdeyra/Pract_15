@@ -15,8 +15,8 @@ namespace Pract15.ViewModels
     {
         private readonly Pract15Context _db;
         private string _searchQuery = "";
-        private double _selectedCategoryId = 0;
-        private double _selectedBrandId = 0;
+        private int _selectedCategoryId = 0;
+        private int _selectedBrandId = 0;
         private string _priceFrom = "";
         private string _priceTo = "";
         private ICollectionView _productsView;
@@ -60,7 +60,7 @@ namespace Pract15.ViewModels
             }
         }
 
-        public double SelectedCategoryId
+        public int SelectedCategoryId
         {
             get => _selectedCategoryId;
             set
@@ -74,7 +74,7 @@ namespace Pract15.ViewModels
             }
         }
 
-        public double SelectedBrandId
+        public int SelectedBrandId
         {
             get => _selectedBrandId;
             set
@@ -124,7 +124,7 @@ namespace Pract15.ViewModels
         public string UserRole { get; }
         public bool IsManagerMode { get; }
 
-        // Команды сортировки
+        // КОМАНДЫ СОРТИРОВКИ - ДОБАВЬТЕ ЭТИ МЕТОДЫ
         public void SortByNameAsc()
         {
             _productsView.SortDescriptions.Clear();
@@ -211,6 +211,9 @@ namespace Pract15.ViewModels
             }
         }
 
+
+
+
         private void LoadCategories()
         {
             Categories.Clear();
@@ -281,13 +284,13 @@ namespace Pract15.ViewModels
                 return false;
 
             // Фильтр по цене
-            if (!string.IsNullOrEmpty(PriceFrom) && double.TryParse(PriceFrom, out double minPrice))
+            if (!string.IsNullOrEmpty(PriceFrom) && int.TryParse(PriceFrom, out int minPrice))
             {
                 if (product.Price < minPrice)
                     return false;
             }
 
-            if (!string.IsNullOrEmpty(PriceTo) && double.TryParse(PriceTo, out double maxPrice))
+            if (!string.IsNullOrEmpty(PriceTo) && int.TryParse(PriceTo, out int maxPrice))
             {
                 if (product.Price > maxPrice)
                     return false;
@@ -304,27 +307,26 @@ namespace Pract15.ViewModels
         }
 
         // Метод для обновления товара в коллекции
+        // Метод для обновления товара в коллекции
         public void UpdateProductInCollection(Product updatedProduct)
         {
-            var existingProduct = Products.FirstOrDefault(p =>
-                Math.Abs(p.Id - updatedProduct.Id) < 0.0001);
+            var existingProduct = Products.FirstOrDefault(p => p.Id == updatedProduct.Id);
 
             if (existingProduct != null)
             {
-                // Создаем новый объект с обновленными данными
                 var index = Products.IndexOf(existingProduct);
                 Products.RemoveAt(index);
 
-                // Загружаем полные данные с навигационными свойствами
                 try
                 {
                     var db = DbService.Instance;
+                    // Загружаем полные данные ВКЛЮЧАЯ ТЕГИ
                     var freshProduct = db.Products
                         .Include(p => p.Category)
                         .Include(p => p.Brand)
                         .Include(p => p.ProductTags)
-                            .ThenInclude(pt => pt.Tag)
-                        .FirstOrDefault(p => Math.Abs(p.Id - updatedProduct.Id) < 0.0001);
+                            .ThenInclude(pt => pt.Tag) // ВАЖНО: загружаем связанные теги
+                        .FirstOrDefault(p => p.Id == updatedProduct.Id);
 
                     if (freshProduct != null)
                     {
@@ -332,6 +334,7 @@ namespace Pract15.ViewModels
                     }
                     else
                     {
+                        // Если не удалось загрузить из базы, используем обновленный
                         Products.Insert(index, updatedProduct);
                     }
                 }
@@ -346,7 +349,6 @@ namespace Pract15.ViewModels
             }
             else
             {
-                // Если товар не найден, добавляем его
                 Products.Add(updatedProduct);
                 OnPropertyChanged(nameof(TotalProductsCount));
                 OnPropertyChanged(nameof(DisplayedProductsCount));
@@ -355,7 +357,8 @@ namespace Pract15.ViewModels
             RefreshFilter();
         }
 
-        // Метод для добавления нового товара (перезагружает всю коллекцию)
+
+        // Метод для добавления нового товара
         public void AddNewProduct()
         {
             LoadProducts();

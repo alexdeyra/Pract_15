@@ -10,7 +10,7 @@ namespace Pract15.Windows
 {
     public partial class ProductEditWindow : Window
     {
-        private double _productId;
+        private int _productId;
         private bool _isEditMode;
         private Product _productToEdit;
 
@@ -79,43 +79,54 @@ namespace Pract15.Windows
             }
         }
 
-        private void LoadProductSelectionData(double productId)
+        private void LoadProductSelectionData(int productId)
         {
             try
             {
                 using var db = new Pract15Context();
 
-                // Загружаем товар с категорией и брендом
+                // Загружаем товар с категорией, брендом и тегами (включая связанные теги)
                 var product = db.Products
                     .Include(p => p.Category)
                     .Include(p => p.Brand)
                     .Include(p => p.ProductTags)
-                    .FirstOrDefault(p => Math.Abs(p.Id - productId) < 0.0001);
+                        .ThenInclude(pt => pt.Tag) // ВАЖНО: загружаем связанные объекты Tag
+                    .FirstOrDefault(p => p.Id == productId);
 
                 if (product != null)
                 {
                     // Устанавливаем выбранные категорию и бренд
                     var category = CategoryComboBox.ItemsSource.Cast<Category>()
-                        .FirstOrDefault(c => Math.Abs(c.Id - product.CategoryId) < 0.0001);
+                        .FirstOrDefault(c => c.Id == product.CategoryId);
                     if (category != null)
                         CategoryComboBox.SelectedItem = category;
 
                     var brand = BrandComboBox.ItemsSource.Cast<Brand>()
-                        .FirstOrDefault(b => Math.Abs(b.Id - product.BrandId) < 0.0001);
+                        .FirstOrDefault(b => b.Id == product.BrandId);
                     if (brand != null)
                         BrandComboBox.SelectedItem = brand;
 
-                    // Загружаем выбранные теги
-                    var productTags = db.ProductTags
-                        .Where(pt => Math.Abs(pt.ProductId - productId) < 0.0001)
+                    // Загружаем ВСЕ теги из базы (актуальные)
+                    var allTags = db.Tags.ToList();
+                    var tagViewModels = allTags.Select(t => new TagViewModel
+                    {
+                        Id = t.Id,
+                        Name = t.Name,
+                        IsSelected = false
+                    }).ToList();
+
+                    // Получаем ID выбранных тегов из товара
+                    var selectedTagIds = product.ProductTags
                         .Select(pt => pt.TagId)
                         .ToList();
 
-                    var tagViewModels = TagsListBox.ItemsSource.Cast<TagViewModel>().ToList();
-                    foreach (var tag in tagViewModels)
+                    // Устанавливаем выбранные теги
+                    foreach (var tagViewModel in tagViewModels)
                     {
-                        tag.IsSelected = productTags.Any(tagId => Math.Abs(tagId - tag.Id) < 0.0001);
+                        tagViewModel.IsSelected = selectedTagIds.Contains(tagViewModel.Id);
                     }
+
+                    // Обновляем ListBox с тегами
                     TagsListBox.ItemsSource = tagViewModels;
                     TagsListBox.Items.Refresh();
                 }
@@ -299,7 +310,7 @@ namespace Pract15.Windows
                         .Include(p => p.ProductTags)
                         .Include(p => p.Category)
                         .Include(p => p.Brand)
-                        .FirstOrDefault(p => Math.Abs(p.Id - _productId) < 0.0001);
+                        .FirstOrDefault(p => p.Id == _productId);
 
                     if (existingProduct == null)
                     {
@@ -310,8 +321,8 @@ namespace Pract15.Windows
                     // Обновляем свойства
                     existingProduct.Name = NameTextBox.Text.Trim();
                     existingProduct.Description = DescriptionTextBox.Text.Trim();
-                    existingProduct.Price = Math.Round(double.Parse(PriceTextBox.Text), 2);
-                    existingProduct.Stock = int.Parse(StockTextBox.Text);
+                    existingProduct.Price = (int)Math.Round(double.Parse(PriceTextBox.Text), 0);  // Convert to int
+                    existingProduct.Stock = int.Parse(StockTextBox.Text);  // Already int
                     existingProduct.Rating = Math.Round(double.Parse(RatingTextBox.Text), 1);
 
                     // Обновляем категорию и бренд
@@ -329,7 +340,7 @@ namespace Pract15.Windows
 
                     // Удаляем старые теги
                     var oldProductTags = db.ProductTags
-                        .Where(pt => Math.Abs(pt.ProductId - existingProduct.Id) < 0.0001)
+                        .Where(pt => pt.ProductId == existingProduct.Id)
                         .ToList();
                     db.ProductTags.RemoveRange(oldProductTags);
 
@@ -339,7 +350,7 @@ namespace Pract15.Windows
                         db.ProductTags.Add(new ProductTag
                         {
                             ProductId = existingProduct.Id,
-                            TagId = tagId
+                            TagId = (int)tagId  // Cast to int
                         });
                     }
 
@@ -351,17 +362,17 @@ namespace Pract15.Windows
                         .Include(p => p.Brand)
                         .Include(p => p.ProductTags)
                             .ThenInclude(pt => pt.Tag)
-                        .FirstOrDefault(p => Math.Abs(p.Id - existingProduct.Id) < 0.0001);
+                        .FirstOrDefault(p => p.Id == existingProduct.Id);
                 }
                 else
                 {
                     // ДОБАВЛЕНИЕ нового товара
-                    double maxId = 0;
+                    int maxId = 0;
                     if (db.Products.Any())
                     {
                         maxId = db.Products.Max(p => p.Id);
                     }
-                    double newId = maxId + 1;
+                    int newId = maxId + 1;
 
                     var selectedCategory = CategoryComboBox.SelectedItem as Category;
                     var selectedBrand = BrandComboBox.SelectedItem as Brand;
@@ -371,7 +382,7 @@ namespace Pract15.Windows
                         Id = newId,
                         Name = NameTextBox.Text.Trim(),
                         Description = DescriptionTextBox.Text.Trim(),
-                        Price = Math.Round(double.Parse(PriceTextBox.Text), 2),
+                        Price = (int)Math.Round(double.Parse(PriceTextBox.Text), 0),  // Convert to int
                         Stock = int.Parse(StockTextBox.Text),
                         Rating = Math.Round(double.Parse(RatingTextBox.Text), 1),
                         CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -379,7 +390,6 @@ namespace Pract15.Windows
                         BrandId = selectedBrand.Id
                     };
 
-                    // Добавляем товар
                     db.Products.Add(newProduct);
                     db.SaveChanges();
 
@@ -394,7 +404,7 @@ namespace Pract15.Windows
                         db.ProductTags.Add(new ProductTag
                         {
                             ProductId = newProduct.Id,
-                            TagId = tagId
+                            TagId = (int)tagId  // Cast to int
                         });
                     }
 
@@ -406,7 +416,7 @@ namespace Pract15.Windows
                         .Include(p => p.Brand)
                         .Include(p => p.ProductTags)
                             .ThenInclude(pt => pt.Tag)
-                        .FirstOrDefault(p => Math.Abs(p.Id - newId) < 0.0001);
+                        .FirstOrDefault(p => p.Id == newId);
                 }
 
                 // Генерируем события для обновления UI
@@ -422,16 +432,9 @@ namespace Pract15.Windows
                 DialogResult = true;
                 Close();
             }
-            catch (DbUpdateException dbEx)
-            {
-                ShowError($"Ошибка сохранения в базу данных: {dbEx.InnerException?.Message ?? dbEx.Message}");
-                System.Diagnostics.Debug.WriteLine($"DbUpdateException: {dbEx}");
-                System.Diagnostics.Debug.WriteLine($"Inner Exception: {dbEx.InnerException}");
-            }
             catch (Exception ex)
             {
                 ShowError($"Ошибка сохранения: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Exception: {ex}");
             }
         }
 
@@ -490,7 +493,7 @@ namespace Pract15.Windows
 
     public class TagViewModel
     {
-        public double Id { get; set; }
+        public int Id { get; set; }  
         public string Name { get; set; }
         public bool IsSelected { get; set; }
     }

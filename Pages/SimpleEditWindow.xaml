@@ -1,0 +1,72 @@
+﻿<Window x:Class="Pract15.Windows.SimpleEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Редактирование"
+        Width="400"
+        Height="299"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource PrimaryBackgroundBrush}"
+        ResizeMode="NoResize">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Label -->
+        <TextBlock x:Name="LabelText"
+                   Grid.Row="0"
+                   FontSize="14"
+                   FontWeight="Medium"
+                   Foreground="{StaticResource PrimaryTextBrush}"
+                   Margin="0,0,0,10"/>
+
+        <!-- TextBox с видимым текстом -->
+        <TextBox x:Name="ValueTextBox"
+                 Grid.Row="1"
+                 Style="{StaticResource PrimaryTextBox}"
+                 VerticalAlignment="Top"
+                 FontSize="14"
+                 Background="White"
+                 Foreground="{StaticResource PrimaryTextBrush}"
+                 BorderBrush="{StaticResource PrimaryBrush}"
+                 BorderThickness="1"
+                 Padding="10"
+                 VerticalContentAlignment="Center"
+                 KeyDown="ValueTextBox_KeyDown"
+                 TextChanged="ValueTextBox_TextChanged" Height="103">
+            <TextBox.Template>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </TextBox.Template>
+        </TextBox>
+
+        <!-- Кнопки -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button Content="Отмена"
+                    Style="{StaticResource SecondaryButton}"
+                    Click="Cancel_Click"
+                    Margin="0,0,10,0"
+                    Width="100"
+                    Height="35"/>
+            <Button Content="Сохранить"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="Save_Click"
+                    Width="100"
+                    Height="35"/>
+        </StackPanel>
+    </Grid>
+</Window>

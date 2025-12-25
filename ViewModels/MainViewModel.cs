@@ -15,10 +15,10 @@ namespace Pract15.ViewModels
     {
         private readonly Pract15Context _db;
         private string _searchQuery = "";
-        private double? _selectedCategoryId;
-        private double? _selectedBrandId;
-        private double? _priceFrom;
-        private double? _priceTo;
+        private double _selectedCategoryId = 0;
+        private double _selectedBrandId = 0;
+        private string _priceFrom = "";
+        private string _priceTo = "";
         private ICollectionView _productsView;
         private ObservableCollection<Product> _products;
 
@@ -60,7 +60,7 @@ namespace Pract15.ViewModels
             }
         }
 
-        public double? SelectedCategoryId
+        public double SelectedCategoryId
         {
             get => _selectedCategoryId;
             set
@@ -74,7 +74,236 @@ namespace Pract15.ViewModels
             }
         }
 
+        public double SelectedBrandId
+        {
+            get => _selectedBrandId;
+            set
+            {
+                if (_selectedBrandId != value)
+                {
+                    _selectedBrandId = value;
+                    OnPropertyChanged();
+                    RefreshFilter();
+                }
+            }
+        }
 
+        public string PriceFrom
+        {
+            get => _priceFrom;
+            set
+            {
+                if (_priceFrom != value)
+                {
+                    _priceFrom = value;
+                    OnPropertyChanged();
+                    RefreshFilter();
+                }
+            }
+        }
+
+        public string PriceTo
+        {
+            get => _priceTo;
+            set
+            {
+                if (_priceTo != value)
+                {
+                    _priceTo = value;
+                    OnPropertyChanged();
+                    RefreshFilter();
+                }
+            }
+        }
+
+        // Статистика
+        public int TotalProductsCount => _products.Count;
+        public int DisplayedProductsCount => _productsView?.Cast<object>().Count() ?? 0;
+
+        // Режим пользователя
+        public string UserRole { get; }
+        public bool IsManagerMode { get; }
+
+        // Команды сортировки
+        public void SortByNameAsc()
+        {
+            _productsView.SortDescriptions.Clear();
+            _productsView.SortDescriptions.Add(new SortDescription("Name", ListSortDirection.Ascending));
+            _productsView.Refresh();
+        }
+
+        public void SortByNameDesc()
+        {
+            _productsView.SortDescriptions.Clear();
+            _productsView.SortDescriptions.Add(new SortDescription("Name", ListSortDirection.Descending));
+            _productsView.Refresh();
+        }
+
+        public void SortByPriceAsc()
+        {
+            _productsView.SortDescriptions.Clear();
+            _productsView.SortDescriptions.Add(new SortDescription("Price", ListSortDirection.Ascending));
+            _productsView.Refresh();
+        }
+
+        public void SortByPriceDesc()
+        {
+            _productsView.SortDescriptions.Clear();
+            _productsView.SortDescriptions.Add(new SortDescription("Price", ListSortDirection.Descending));
+            _productsView.Refresh();
+        }
+
+        public void SortByStockAsc()
+        {
+            _productsView.SortDescriptions.Clear();
+            _productsView.SortDescriptions.Add(new SortDescription("Stock", ListSortDirection.Ascending));
+            _productsView.Refresh();
+        }
+
+        public void SortByStockDesc()
+        {
+            _productsView.SortDescriptions.Clear();
+            _productsView.SortDescriptions.Add(new SortDescription("Stock", ListSortDirection.Descending));
+            _productsView.Refresh();
+        }
+
+        public void ResetFilters()
+        {
+            SearchQuery = "";
+            SelectedCategoryId = 0;
+            SelectedBrandId = 0;
+            PriceFrom = "";
+            PriceTo = "";
+            _productsView.SortDescriptions.Clear();
+            _productsView.Refresh();
+            OnPropertyChanged(nameof(TotalProductsCount));
+            OnPropertyChanged(nameof(DisplayedProductsCount));
+        }
+
+        public void LoadProducts()
+        {
+            _products.Clear();
+
+            try
+            {
+                var products = _db.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Brand)
+                    .Include(p => p.ProductTags)
+                        .ThenInclude(pt => pt.Tag)
+                    .ToList();
+
+                foreach (var product in products)
+                {
+                    _products.Add(product);
+                }
+
+                RefreshFilter();
+
+                OnPropertyChanged(nameof(TotalProductsCount));
+                OnPropertyChanged(nameof(DisplayedProductsCount));
+
+                System.Diagnostics.Debug.WriteLine($"Загружено {_products.Count} товаров");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки продуктов: {ex.Message}");
+            }
+        }
+
+        private void LoadCategories()
+        {
+            Categories.Clear();
+            try
+            {
+                var categories = _db.Categories.ToList();
+                foreach (var category in categories)
+                {
+                    Categories.Add(category);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки категорий: {ex.Message}");
+            }
+        }
+
+        private void LoadBrands()
+        {
+            Brands.Clear();
+            try
+            {
+                var brands = _db.Brands.ToList();
+                foreach (var brand in brands)
+                {
+                    Brands.Add(brand);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки брендов: {ex.Message}");
+            }
+        }
+
+        private void LoadTags()
+        {
+            Tags.Clear();
+            try
+            {
+                var tags = _db.Tags.ToList();
+                foreach (var tag in tags)
+                {
+                    Tags.Add(tag);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки тегов: {ex.Message}");
+            }
+        }
+
+        private bool FilterProduct(object obj)
+        {
+            if (obj is not Product product)
+                return false;
+
+            // Поиск по названию
+            if (!string.IsNullOrEmpty(SearchQuery) &&
+                !product.Name.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // Фильтр по категории (0 означает "все категории")
+            if (SelectedCategoryId > 0 && product.CategoryId != SelectedCategoryId)
+                return false;
+
+            // Фильтр по бренду (0 означает "все бренды")
+            if (SelectedBrandId > 0 && product.BrandId != SelectedBrandId)
+                return false;
+
+            // Фильтр по цене
+            if (!string.IsNullOrEmpty(PriceFrom) && double.TryParse(PriceFrom, out double minPrice))
+            {
+                if (product.Price < minPrice)
+                    return false;
+            }
+
+            if (!string.IsNullOrEmpty(PriceTo) && double.TryParse(PriceTo, out double maxPrice))
+            {
+                if (product.Price > maxPrice)
+                    return false;
+            }
+
+            return true;
+        }
+
+        public void RefreshFilter()
+        {
+            _productsView?.Refresh();
+            OnPropertyChanged(nameof(DisplayedProductsCount));
+            OnPropertyChanged(nameof(TotalProductsCount));
+        }
+
+        // Метод для обновления товара в коллекции
         public void UpdateProductInCollection(Product updatedProduct)
         {
             var existingProduct = Products.FirstOrDefault(p =>
@@ -151,249 +380,6 @@ namespace Pract15.ViewModels
             LoadTags();
         }
 
-        public double? SelectedBrandId
-        {
-            get => _selectedBrandId;
-            set
-            {
-                if (_selectedBrandId != value)
-                {
-                    _selectedBrandId = value;
-                    OnPropertyChanged();
-                    RefreshFilter();
-                }
-            }
-        }
-
-        public string PriceFrom
-        {
-            get => _priceFrom?.ToString();
-            set
-            {
-                if (double.TryParse(value, out double result))
-                {
-                    _priceFrom = result;
-                }
-                else if (string.IsNullOrEmpty(value))
-                {
-                    _priceFrom = null;
-                }
-                OnPropertyChanged();
-                RefreshFilter();
-            }
-        }
-
-        public string PriceTo
-        {
-            get => _priceTo?.ToString();
-            set
-            {
-                if (double.TryParse(value, out double result))
-                {
-                    _priceTo = result;
-                }
-                else if (string.IsNullOrEmpty(value))
-                {
-                    _priceTo = null;
-                }
-                OnPropertyChanged();
-                RefreshFilter();
-            }
-        }
-
-        // Статистика
-        public int TotalProductsCount => _products.Count;
-        public int DisplayedProductsCount => _productsView?.Cast<object>().Count() ?? 0;
-
-        // Режим пользователя - публичное свойство для привязки
-        public string UserRole { get; }
-        public bool IsManagerMode { get; }
-
-        // Команды сортировки
-        public void SortByNameAsc()
-        {
-            _productsView.SortDescriptions.Clear();
-            _productsView.SortDescriptions.Add(new SortDescription("Name", ListSortDirection.Ascending));
-            _productsView.Refresh();
-        }
-
-        public void SortByNameDesc()
-        {
-            _productsView.SortDescriptions.Clear();
-            _productsView.SortDescriptions.Add(new SortDescription("Name", ListSortDirection.Descending));
-            _productsView.Refresh();
-        }
-
-        public void SortByPriceAsc()
-        {
-            _productsView.SortDescriptions.Clear();
-            _productsView.SortDescriptions.Add(new SortDescription("Price", ListSortDirection.Ascending));
-            _productsView.Refresh();
-        }
-
-        public void SortByPriceDesc()
-        {
-            _productsView.SortDescriptions.Clear();
-            _productsView.SortDescriptions.Add(new SortDescription("Price", ListSortDirection.Descending));
-            _productsView.Refresh();
-        }
-
-        public void SortByStockAsc()
-        {
-            _productsView.SortDescriptions.Clear();
-            _productsView.SortDescriptions.Add(new SortDescription("Stock", ListSortDirection.Ascending));
-            _productsView.Refresh();
-        }
-
-        public void SortByStockDesc()
-        {
-            _productsView.SortDescriptions.Clear();
-            _productsView.SortDescriptions.Add(new SortDescription("Stock", ListSortDirection.Descending));
-            _productsView.Refresh();
-        }
-
-        public void ResetFilters()
-        {
-            SearchQuery = "";
-            SelectedCategoryId = null;
-            SelectedBrandId = null;
-            PriceFrom = "";
-            PriceTo = "";
-            _productsView.SortDescriptions.Clear();
-            _productsView.Refresh();
-            OnPropertyChanged(nameof(TotalProductsCount));
-            OnPropertyChanged(nameof(DisplayedProductsCount));
-        }
-
-        // Загрузка данных
-        // В методе LoadProducts() добавьте обновление:
-        public void LoadProducts()
-        {
-            _products.Clear();
-
-            try
-            {
-                var products = _db.Products
-                    .Include(p => p.Category)
-                    .Include(p => p.Brand)
-                    .Include(p => p.ProductTags)
-                        .ThenInclude(pt => pt.Tag)
-                    .ToList();
-
-                foreach (var product in products)
-                {
-                    _products.Add(product);
-                }
-
-                RefreshFilter();
-
-                // Уведомляем об изменении статистики
-                OnPropertyChanged(nameof(TotalProductsCount));
-                OnPropertyChanged(nameof(DisplayedProductsCount));
-
-                // Выводим отладочную информацию
-                System.Diagnostics.Debug.WriteLine($"Загружено {_products.Count} товаров");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки продуктов: {ex.Message}");
-            }
-        }
-
-        private void LoadCategories()
-        {
-            Categories.Clear();
-            try
-            {
-                var categories = _db.Categories.ToList();
-                foreach (var category in categories)
-                {
-                    Categories.Add(category);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки категорий: {ex.Message}");
-            }
-        }
-
-        private void LoadBrands()
-        {
-            Brands.Clear();
-            try
-            {
-                var brands = _db.Brands.ToList();
-                foreach (var brand in brands)
-                {
-                    Brands.Add(brand);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки брендов: {ex.Message}");
-            }
-        }
-
-        private void LoadTags()
-        {
-            Tags.Clear();
-            try
-            {
-                var tags = _db.Tags.ToList();
-                foreach (var tag in tags)
-                {
-                    Tags.Add(tag);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки тегов: {ex.Message}");
-            }
-        }
-
-       
-        private bool FilterProduct(object obj)
-        {
-            if (obj is not Product product)
-                return false;
-
-            // Поиск по названию
-            if (!string.IsNullOrEmpty(SearchQuery) &&
-                !product.Name.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            // Фильтр по категории - СРАВНЕНИЕ С NULLABLE
-            if (SelectedCategoryId.HasValue)
-            {
-                if (!product.CategoryId.HasValue || product.CategoryId.Value != SelectedCategoryId.Value)
-                    return false;
-            }
-
-            // Фильтр по бренду - СРАВНЕНИЕ С NULLABLE
-            if (SelectedBrandId.HasValue)
-            {
-                if (!product.BrandId.HasValue || product.BrandId.Value != SelectedBrandId.Value)
-                    return false;
-            }
-
-            // Фильтр по цене
-            if (_priceFrom.HasValue && product.Price < _priceFrom.Value)
-                return false;
-
-            if (_priceTo.HasValue && product.Price > _priceTo.Value)
-                return false;
-
-            return true;
-        }
-
-        public void RefreshFilter()
-        {
-            _productsView?.Refresh();
-            OnPropertyChanged(nameof(DisplayedProductsCount));
-            OnPropertyChanged(nameof(TotalProductsCount));
-        }
-
-        // INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)

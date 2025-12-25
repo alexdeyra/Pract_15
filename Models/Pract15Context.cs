@@ -26,7 +26,6 @@ public partial class Pract15Context : DbContext
     public virtual DbSet<Tag> Tags { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=BANBAN\\SQLEXPRESS02;Database=pract15;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -37,6 +36,7 @@ public partial class Pract15Context : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name)
+                .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("name");
         });
@@ -47,6 +47,7 @@ public partial class Pract15Context : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name)
+                .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("name");
         });
@@ -59,12 +60,15 @@ public partial class Pract15Context : DbContext
             entity.Property(e => e.BrandId).HasColumnName("brand_id");
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.CreatedAt)
+                .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("created_at");
             entity.Property(e => e.Description)
+                .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("description");
             entity.Property(e => e.Name)
+                .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.Price).HasColumnName("price");
@@ -73,10 +77,12 @@ public partial class Pract15Context : DbContext
 
             entity.HasOne(d => d.Brand).WithMany(p => p.Products)
                 .HasForeignKey(d => d.BrandId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_products$_brands$");
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_products$_categories$");
         });
 
@@ -92,10 +98,12 @@ public partial class Pract15Context : DbContext
 
             entity.HasOne(d => d.Product).WithMany(p => p.ProductTags)
                 .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_product_tags$_products$");
 
             entity.HasOne(d => d.Tag).WithMany(p => p.ProductTags)
                 .HasForeignKey(d => d.TagId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_product_tags$_tags$");
         });
 
@@ -105,6 +113,7 @@ public partial class Pract15Context : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name)
+                .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("name");
         });

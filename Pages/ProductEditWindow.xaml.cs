@@ -10,7 +10,7 @@ namespace Pract15.Windows
 {
     public partial class ProductEditWindow : Window
     {
-        private double? _productId;
+        private double _productId;
         private bool _isEditMode;
         private Product _productToEdit;
 
@@ -32,9 +32,9 @@ namespace Pract15.Windows
                 // Сразу загружаем данные товара в поля
                 NameTextBox.Text = product.Name;
                 DescriptionTextBox.Text = product.Description;
-                PriceTextBox.Text = product.Price?.ToString("0.00");
-                StockTextBox.Text = product.Stock?.ToString("0");
-                RatingTextBox.Text = product.Rating?.ToString("0.0");
+                PriceTextBox.Text = product.Price.ToString("0.00");
+                StockTextBox.Text = product.Stock.ToString("0");
+                RatingTextBox.Text = product.Rating.ToString("0.0");
             }
             else
             {
@@ -66,9 +66,9 @@ namespace Pract15.Windows
                 }).ToList();
 
                 // Если режим редактирования - загружаем выбранные категорию, бренд и теги
-                if (_isEditMode && _productId.HasValue)
+                if (_isEditMode)
                 {
-                    LoadProductSelectionData(_productId.Value);
+                    LoadProductSelectionData(_productId);
                 }
             }
             catch (Exception ex)
@@ -95,33 +95,26 @@ namespace Pract15.Windows
                 if (product != null)
                 {
                     // Устанавливаем выбранные категорию и бренд
-                    if (product.CategoryId.HasValue)
-                    {
-                        var category = CategoryComboBox.ItemsSource.Cast<Category>()
-                            .FirstOrDefault(c => Math.Abs(c.Id - product.CategoryId.Value) < 0.0001);
-                        if (category != null)
-                            CategoryComboBox.SelectedItem = category;
-                    }
+                    var category = CategoryComboBox.ItemsSource.Cast<Category>()
+                        .FirstOrDefault(c => Math.Abs(c.Id - product.CategoryId) < 0.0001);
+                    if (category != null)
+                        CategoryComboBox.SelectedItem = category;
 
-                    if (product.BrandId.HasValue)
-                    {
-                        var brand = BrandComboBox.ItemsSource.Cast<Brand>()
-                            .FirstOrDefault(b => Math.Abs(b.Id - product.BrandId.Value) < 0.0001);
-                        if (brand != null)
-                            BrandComboBox.SelectedItem = brand;
-                    }
+                    var brand = BrandComboBox.ItemsSource.Cast<Brand>()
+                        .FirstOrDefault(b => Math.Abs(b.Id - product.BrandId) < 0.0001);
+                    if (brand != null)
+                        BrandComboBox.SelectedItem = brand;
 
                     // Загружаем выбранные теги
                     var productTags = db.ProductTags
-                        .Where(pt => Math.Abs(pt.ProductId.GetValueOrDefault() - productId) < 0.0001)
+                        .Where(pt => Math.Abs(pt.ProductId - productId) < 0.0001)
                         .Select(pt => pt.TagId)
                         .ToList();
 
                     var tagViewModels = TagsListBox.ItemsSource.Cast<TagViewModel>().ToList();
                     foreach (var tag in tagViewModels)
                     {
-                        tag.IsSelected = productTags.Any(tagId =>
-                            tagId.HasValue && Math.Abs(tagId.Value - tag.Id) < 0.0001);
+                        tag.IsSelected = productTags.Any(tagId => Math.Abs(tagId - tag.Id) < 0.0001);
                     }
                     TagsListBox.ItemsSource = tagViewModels;
                     TagsListBox.Items.Refresh();
@@ -299,14 +292,14 @@ namespace Pract15.Windows
                 using var db = new Pract15Context();
                 Product savedProduct = null;
 
-                if (_isEditMode && _productId.HasValue)
+                if (_isEditMode)
                 {
                     // РЕДАКТИРОВАНИЕ существующего товара
                     var existingProduct = db.Products
                         .Include(p => p.ProductTags)
                         .Include(p => p.Category)
                         .Include(p => p.Brand)
-                        .FirstOrDefault(p => Math.Abs(p.Id - _productId.Value) < 0.0001);
+                        .FirstOrDefault(p => Math.Abs(p.Id - _productId) < 0.0001);
 
                     if (existingProduct == null)
                     {
@@ -325,8 +318,8 @@ namespace Pract15.Windows
                     var selectedCategory = CategoryComboBox.SelectedItem as Category;
                     var selectedBrand = BrandComboBox.SelectedItem as Brand;
 
-                    existingProduct.CategoryId = selectedCategory?.Id;
-                    existingProduct.BrandId = selectedBrand?.Id;
+                    existingProduct.CategoryId = selectedCategory.Id;
+                    existingProduct.BrandId = selectedBrand.Id;
 
                     // Обновляем теги
                     var selectedTags = TagsListBox.ItemsSource.Cast<TagViewModel>()
@@ -336,7 +329,7 @@ namespace Pract15.Windows
 
                     // Удаляем старые теги
                     var oldProductTags = db.ProductTags
-                        .Where(pt => Math.Abs(pt.ProductId.GetValueOrDefault() - existingProduct.Id) < 0.0001)
+                        .Where(pt => Math.Abs(pt.ProductId - existingProduct.Id) < 0.0001)
                         .ToList();
                     db.ProductTags.RemoveRange(oldProductTags);
 
@@ -370,6 +363,9 @@ namespace Pract15.Windows
                     }
                     double newId = maxId + 1;
 
+                    var selectedCategory = CategoryComboBox.SelectedItem as Category;
+                    var selectedBrand = BrandComboBox.SelectedItem as Brand;
+
                     var newProduct = new Product
                     {
                         Id = newId,
@@ -378,17 +374,10 @@ namespace Pract15.Windows
                         Price = Math.Round(double.Parse(PriceTextBox.Text), 2),
                         Stock = int.Parse(StockTextBox.Text),
                         Rating = Math.Round(double.Parse(RatingTextBox.Text), 1),
-                        CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                        CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        CategoryId = selectedCategory.Id,
+                        BrandId = selectedBrand.Id
                     };
-
-                    var selectedCategory = CategoryComboBox.SelectedItem as Category;
-                    var selectedBrand = BrandComboBox.SelectedItem as Brand;
-
-                    if (selectedCategory != null)
-                        newProduct.CategoryId = selectedCategory.Id;
-
-                    if (selectedBrand != null)
-                        newProduct.BrandId = selectedBrand.Id;
 
                     // Добавляем товар
                     db.Products.Add(newProduct);

@@ -168,9 +168,11 @@ namespace Pract15.Pages
 
             var searchText = ProductSearchTextBox.Text?.ToLower()?.Trim() ?? "";
 
+            // Если поиск пустой - показываем все товары
             if (string.IsNullOrWhiteSpace(searchText))
                 return true;
 
+            // Ищем во всех полях товара
             return (product.Name?.ToLower().Contains(searchText) == true) ||
                    (product.Description?.ToLower().Contains(searchText) == true) ||
                    (product.Category?.Name?.ToLower().Contains(searchText) == true) ||
@@ -268,30 +270,35 @@ namespace Pract15.Pages
 
         #region Обработчики событий
 
+        // Обработчик для поиска товаров
         private void ProductSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             _productsView.Refresh();
             UpdateProductsStats();
         }
 
+        // Обработчик для поиска категорий
         private void CategorySearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             _categoriesView.Refresh();
             UpdateCategoriesStats();
         }
 
+        // Обработчик для поиска брендов
         private void BrandSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             _brandsView.Refresh();
             UpdateBrandsStats();
         }
 
+        // Обработчик для поиска тегов
         private void TagSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             _tagsView.Refresh();
             UpdateTagsStats();
         }
 
+        // Обработчики для предотвращения автогенерации столбцов
         private void ProductsGrid_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
         {
             e.Cancel = true;
@@ -459,7 +466,7 @@ namespace Pract15.Pages
                         {
                             // Удаляем связанные теги
                             var productTags = db.ProductTags
-                                .Where(pt => Math.Abs(pt.ProductId.GetValueOrDefault() - id) < 0.0001)
+                                .Where(pt => Math.Abs(pt.ProductId - id) < 0.0001)
                                 .ToList();
                             db.ProductTags.RemoveRange(productTags);
 
@@ -599,13 +606,23 @@ namespace Pract15.Pages
 
                         if (category != null)
                         {
-                            // Обнуляем категорию у товаров
+                            // Находим товары этой категории и удаляем их (или устанавливаем default категорию)
                             var products = db.Products
-                                .Where(p => Math.Abs(p.CategoryId.GetValueOrDefault() - id) < 0.0001)
+                                .Where(p => Math.Abs(p.CategoryId - id) < 0.0001)
                                 .ToList();
+
+                            // Можно либо удалить товары, либо установить им другую категорию
+                            // В данном случае удаляем товары
                             foreach (var product in products)
                             {
-                                product.CategoryId = null;
+                                // Удаляем связанные теги товара
+                                var productTags = db.ProductTags
+                                    .Where(pt => Math.Abs(pt.ProductId - product.Id) < 0.0001)
+                                    .ToList();
+                                db.ProductTags.RemoveRange(productTags);
+
+                                // Удаляем товар
+                                db.Products.Remove(product);
                             }
 
                             db.Categories.Remove(category);
@@ -746,13 +763,22 @@ namespace Pract15.Pages
 
                         if (brand != null)
                         {
-                            // Обнуляем бренд у товаров
+                            // Находим товары этого бренда и удаляем их (или устанавливаем default бренд)
                             var products = db.Products
-                                .Where(p => Math.Abs(p.BrandId.GetValueOrDefault() - id) < 0.0001)
+                                .Where(p => Math.Abs(p.BrandId - id) < 0.0001)
                                 .ToList();
+
+                            // Удаляем товары этого бренда
                             foreach (var product in products)
                             {
-                                product.BrandId = null;
+                                // Удаляем связанные теги товара
+                                var productTags = db.ProductTags
+                                    .Where(pt => Math.Abs(pt.ProductId - product.Id) < 0.0001)
+                                    .ToList();
+                                db.ProductTags.RemoveRange(productTags);
+
+                                // Удаляем товар
+                                db.Products.Remove(product);
                             }
 
                             db.Brands.Remove(brand);
@@ -892,7 +918,7 @@ namespace Pract15.Pages
                         {
                             // Удаляем связи с товарами
                             var productTags = db.ProductTags
-                                .Where(pt => Math.Abs(pt.TagId.GetValueOrDefault() - id) < 0.0001)
+                                .Where(pt => Math.Abs(pt.TagId - id) < 0.0001)
                                 .ToList();
                             db.ProductTags.RemoveRange(productTags);
 

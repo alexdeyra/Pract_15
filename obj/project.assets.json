@@ -9849,11 +9849,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\shugu\\OneDrive\\Рабочий стол\\Pract_15-master\\Pract15.csproj",
+      "projectUniqueName": "C:\\Users\\shugu\\OneDrive\\Рабочий стол\\Pract_15\\Pract15.csproj",
       "projectName": "Pract15",
-      "projectPath": "C:\\Users\\shugu\\OneDrive\\Рабочий стол\\Pract_15-master\\Pract15.csproj",
+      "projectPath": "C:\\Users\\shugu\\OneDrive\\Рабочий стол\\Pract_15\\Pract15.csproj",
       "packagesPath": "C:\\Users\\shugu\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\shugu\\OneDrive\\Рабочий стол\\Pract_15-master\\obj\\",
+      "outputPath": "C:\\Users\\shugu\\OneDrive\\Рабочий стол\\Pract_15\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
